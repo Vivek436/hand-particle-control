@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Responsive Hand Controlled 3D Particles</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    height: 100vh;
+    width: 100vw;
+}
+
+#webcam-container {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 160px;
+    height: 120px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    z-index: 100;
+}
+
+@media (max-width: 768px) {
+    #webcam-container {
+        width: 120px;
+        height: 90px;
+        bottom: 15px;
+        right: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    #webcam-container {
+        width: 100px;
+        height: 75px;
+        bottom: 10px;
+        right: 10px;
+    }
+}
+
+#webcam-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+#info-panel {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: white;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    border-radius: 15px;
+    max-width: 300px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 100;
+    opacity: 0.9;
+    transition: opacity 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    #info-panel {
+        padding: 12px;
+        max-width: 250px;
+        font-size: 0.9em;
+    }
+}
+
+@media (max-width: 480px) {
+    #info-panel {
+        max-width: 200px;
+        padding: 10px;
+        font-size: 0.8em;
+        top: 10px;
+        left: 10px;
+    }
+    
+    #info-panel h1 {
+        font-size: 18px !important;
+    }
+}
+
+#info-panel:hover {
+    opacity: 1;
+}
+
+#info-panel h1 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #ff7e5f, #feb47b);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.control-item:hover {
+    transform: translateX(5px);
+}
+
+.control-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.icon {
+    font-size: 18px;
+    margin-right: 10px;
+    width: 30px;
+    text-align: center;
+}
+
+@media (max-width: 480px) {
+    .icon {
+        font-size: 16px;
+        width: 25px;
+    }
+}
+
+.control-text {
+    flex: 1;
+}
+
+.control-text p {
+    margin: 0;
+    font-size: 0.85em;
+    line-height: 1.3;
+}
+
+.control-text .title {
+    font-weight: 600;
+    margin-bottom: 2px;
+    color: #feb47b;
+    font-size: 0.9em;
+}
+
+#template-indicator {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 10px 20px;
+    border-radius: 50px;
+    color: white;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 100;
+    transition: all 0.3s ease;
+    font-size: 0.9em;
+}
+
+@media (max-width: 768px) {
+    #template-indicator {
+        padding: 8px 16px;
+        font-size: 0.85em;
+        bottom: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    #template-indicator {
+        padding: 6px 12px;
+        font-size: 0.8em;
+        bottom: 10px;
+    }
+}
+
+.template-icon {
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+#loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #0f0c29;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid #ff7e5f;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@media (max-width: 480px) {
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border-width: 3px;
+    }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#loading p {
+    color: white;
+    font-size: 16px;
+    margin-top: 10px;
+    text-align: center;
+}
+
+@media (max-width: 480px) {
+    #loading p {
+        font-size: 14px;
+    }
+}
+
+#hand-status {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 0.8em;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    z-index: 100;
+}
+
+@media (max-width: 768px) {
+    #hand-status {
+        padding: 6px 12px;
+        font-size: 0.75em;
+        top: 15px;
+        right: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    #hand-status {
+        padding: 5px 10px;
+        font-size: 0.7em;
+        top: 10px;
+        right: 10px;
+    }
+}
+
+.hand-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: #ff4a4a;
+    animation: pulse 1.5s infinite;
+}
+
+.hand-dot.connected {
+    background: #4aff7c;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.smoothness-indicator {
+    position: absolute;
+    bottom: 70px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.75em;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 100;
+}
+
+@media (max-width: 768px) {
+    .smoothness-indicator {
+        bottom: 60px;
+        left: 15px;
+        padding: 6px 10px;
+        font-size: 0.7em;
+    }
+}
+
+@media (max-width: 480px) {
+    .smoothness-indicator {
+        position: static;
+        margin: 10px;
+        width: calc(100% - 20px);
+        box-sizing: border-box;
+        bottom: auto;
+        left: auto;
+    }
+}
+
+#smoothness-control {
+    margin-top: 5px;
+    width: 100%;
+    max-width: 150px;
+}
+
+@media (max-width: 768px) {
+    #smoothness-control {
+        max-width: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    #smoothness-control {
+        max-width: 100%;
+    }
+}
+
+#mobile-controls {
+    display: none;
+    position: absolute;
+    bottom: 100px;
+    left: 0;
+    right: 0;
+    justify-content: center;
+    gap: 10px;
+    z-index: 100;
+    padding: 0 20px;
+}
+
+@media (max-width: 480px) {
+    #mobile-controls {
+        display: flex;
+    }
+}
+
+.mobile-btn {
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+}
+
+.mobile-btn:active {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0.95);
+}
+
+#orientation-warning {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 2000;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+
+#orientation-warning h2 {
+    color: #ff7e5f;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+#orientation-warning p {
+    font-size: 18px;
+    max-width: 300px;
+    line-height: 1.5;
+}
+
+.rotate-icon {
+    font-size: 60px;
+    margin-bottom: 30px;
+    animation: rotatePhone 2s infinite ease-in-out;
+}
+
+@keyframes rotatePhone {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+}
+
+#canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#performance-info {
+    position: absolute;
+    top: 80px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.7em;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 100;
+    font-family: monospace;
+}
+
+@media (max-width: 768px) {
+    #performance-info {
+        top: 70px;
+        right: 15px;
+        font-size: 0.65em;
+        padding: 6px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    #performance-info {
+        top: 60px;
+        right: 10px;
+        font-size: 0.6em;
+        padding: 5px 8px;
+    }
+}
+</style>
+
+<!-- THREE JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- MEDIAPIPE -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+</head>
+
+<body>
+
+<div id="loading">
+    <div class="spinner"></div>
+    <p>Loading Hand Tracking...</p>
+</div>
+
+<div id="orientation-warning">
+    <div class="rotate-icon">📱</div>
+    <h2>Please Rotate Device</h2>
+    <p>For the best experience, please rotate your device to landscape mode.</p>
+</div>
+
+<div id="info-panel">
+    <h1>Hand Particle Control</h1>
+    
+    <div class="control-item">
+        <div class="icon">👋</div>
+        <div class="control-text">
+            <div class="title">Smooth Hand Movement</div>
+            <p>Move hand to control particles</p>
+        </div>
+    </div>
+    
+    <div class="control-item">
+        <div class="icon">🤏</div>
+        <div class="control-text">
+            <div class="title">Pinch Gesture</div>
+            <p>Pinch to change particle size</p>
+        </div>
+    </div>
+    
+    <div class="control-item">
+        <div class="icon">🌀</div>
+        <div class="control-text">
+            <div class="title">Hand Position</div>
+            <p>Move hand to change patterns</p>
+        </div>
+    </div>
+</div>
+
+<div id="hand-status">
+    <div class="hand-dot"></div>
+    <span>Waiting for hand...</span>
+</div>
+
+<div id="performance-info">
+    FPS: <span id="fps-counter">0</span> | 
+    Particles: <span id="particle-count">0</span>
+</div>
+
+<div id="template-indicator">
+    <span class="template-icon">🌀</span>
+    <span id="current-template">Galaxy</span>
+</div>
+
+<div class="smoothness-indicator">
+    <div>Smoothness: <span id="smooth-value">0.85</span></div>
+    <input type="range" id="smoothness-control" min="0.7" max="0.99" step="0.01" value="0.85">
+</div>
+
+<div id="mobile-controls">
+    <button class="mobile-btn" id="mobile-left">←</button>
+    <button class="mobile-btn" id="mobile-reset">↺</button>
+    <button class="mobile-btn" id="mobile-right">→</button>
+</div>
+
+<div id="webcam-container">
+    <video id="webcam-video" autoplay playsinline muted></video>
+</div>
+
+<div id="canvas-container"></div>
+
+<script>
+// ================= RESPONSIVE INITIALIZATION =================
+const loadingElement = document.getElementById('loading');
+const orientationWarning = document.getElementById('orientation-warning');
+const handStatusElement = document.getElementById('hand-status');
+const handDotElement = document.querySelector('.hand-dot');
+const currentTemplateElement = document.getElementById('current-template');
+const smoothnessControl = document.getElementById('smoothness-control');
+const smoothValueElement = document.getElementById('smooth-value');
+const fpsCounter = document.getElementById('fps-counter');
+const particleCountElement = document.getElementById('particle-count');
+const mobileLeftBtn = document.getElementById('mobile-left');
+const mobileRightBtn = document.getElementById('mobile-right');
+const mobileResetBtn = document.getElementById('mobile-reset');
+
+// Check device orientation
+function checkOrientation() {
+    if (window.innerWidth < window.innerHeight && window.innerWidth < 768) {
+        orientationWarning.style.display = 'flex';
+        return false;
+    } else {
+        orientationWarning.style.display = 'none';
+        return true;
+    }
+}
+
+// Initial check
+checkOrientation();
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', checkOrientation);
+
+// ================= RESPONSIVE THREE.JS SETUP =================
+let scene, camera, renderer;
+let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+function initThreeJS() {
+    scene = new THREE.Scene();
+    
+    // Adjust camera based on device
+    const aspectRatio = window.innerWidth / window.innerHeight;
+    const fov = isMobile ? 70 : 75; // Wider FOV for mobile
+    
+    camera = new THREE.PerspectiveCamera(
+        fov,
+        aspectRatio,
+        0.1,
+        1000
+    );
+    
+    // Adjust camera position based on screen size
+    if (window.innerWidth < 768) {
+        camera.position.z = 10;
+    } else {
+        camera.position.z = 8;
+    }
+    
+    // Create renderer with responsive settings
+    renderer = new THREE.WebGLRenderer({ 
+        antialias: !isMobile, // Disable antialias on mobile for performance
+        alpha: true,
+        powerPreference: "high-performance"
+    });
+    
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
+    renderer.shadowMap.enabled = !isMobile;
+    
+    const canvasContainer = document.getElementById('canvas-container');
+    canvasContainer.appendChild(renderer.domElement);
+    
+    // Adaptive fog based on screen size
+    scene.fog = new THREE.Fog(0x0f0c29, 5, window.innerWidth < 768 ? 20 : 15);
+    
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    
+    if (!isMobile) {
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+    }
+}
+
+// ================= ADAPTIVE PARTICLE SYSTEM =================
+let COUNT = 10000; // Default particle count
+let particleSystem;
+let currentTemplate = "galaxy";
+
+// Adjust particle count based on device capability
+function getOptimalParticleCount() {
+    if (isMobile) {
+        return window.innerWidth < 480 ? 5000 : 8000;
+    } else {
+        return window.innerWidth < 1024 ? 15000 : 20000;
+    }
+}
+
+// Initialize with optimal particle count
+COUNT = getOptimalParticleCount();
+particleCountElement.textContent = COUNT.toLocaleString();
+
+// Template definitions with responsive adjustments
+const templates = {
+    galaxy: (i, c) => {
+        const angle = (i / c) * Math.PI * (isMobile ? 8 : 12);
+        const radius = 1.2 + Math.sin(angle * 0.3) * 0.8;
+        
+        return [
+            Math.cos(angle) * radius,
+            Math.sin(angle) * 0.3,
+            Math.sin(angle) * radius
+        ];
+    },
+
+    heart: (i, c) => {
+        const t = (i / c) * Math.PI * 2;
+        const scale = isMobile ? 0.15 : 0.2;
+        
+        return [
+            (16 * Math.pow(Math.sin(t), 3)) * scale,
+            (-(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t))) * scale,
+            0
+        ];
+    },
+
+    saturn: (i, c) => {
+        if (i < c / 3) {
+            const r = 0.7;
+            const theta = (i / c) * Math.PI * 6;
+            const phi = Math.acos(2 * (i / c) - 1);
+            
+            return [
+                r * Math.sin(phi) * Math.cos(theta),
+                r * Math.sin(phi) * Math.sin(theta) * 0.5,
+                r * Math.cos(phi)
+            ];
+        } else {
+            const ringRadius = 1.2;
+            const angle = (i / c) * Math.PI * 8;
+            
+            return [
+                ringRadius * Math.cos(angle),
+                Math.sin(angle * 2) * 0.05,
+                ringRadius * Math.sin(angle)
+            ];
+        }
+    },
+    
+    wave: (i, c) => {
+        const x = (i / c) * 4 - 2;
+        const wave = Math.sin(x * 3) * 0.3;
+        
+        return [
+            x,
+            wave,
+            Math.cos(i * 0.005) * 0.5
+        ];
+    },
+    
+    spiral: (i, c) => {
+        const t = i / c;
+        const angle = t * Math.PI * (isMobile ? 10 : 15);
+        const radius = t * 1.5;
+        
+        return [
+            Math.cos(angle) * radius,
+            Math.sin(t * Math.PI * 2) * 0.8,
+            Math.sin(angle) * radius
+        ];
+    }
+};
+
+// Color schemes
+const templateColors = {
+    galaxy: new THREE.Color(0x4a9eff),
+    heart: new THREE.Color(0xff4a7c),
+    saturn: new THREE.Color(0xffd166),
+    wave: new THREE.Color(0x4affb8),
+    spiral: new THREE.Color(0x9d4aff)
+};
+
+const templateInfo = {
+    galaxy: { icon: "🌀", name: "Galaxy" },
+    heart: { icon: "❤️", name: "Heart" },
+    saturn: { icon: "🪐", name: "Saturn" },
+    wave: { icon: "🌊", name: "Wave" },
+    spiral: { icon: "🌪️", name: "Spiral" }
+};
+
+function createParticles() {
+    COUNT = getOptimalParticleCount();
+    particleCountElement.textContent = COUNT.toLocaleString();
+    
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(COUNT * 3);
+    const colors = new Float32Array(COUNT * 3);
+    const sizes = new Float32Array(COUNT);
+
+    for (let i = 0; i < COUNT; i++) {
+        const [x, y, z] = templates.galaxy(i, COUNT);
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+        
+        const color = templateColors.galaxy;
+        colors[i * 3] = color.r;
+        colors[i * 3 + 1] = color.g;
+        colors[i * 3 + 2] = color.b;
+        
+        sizes[i] = Math.random() * (isMobile ? 0.06 : 0.08) + 0.02;
+    }
+
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
+
+    const material = new THREE.PointsMaterial({
+        vertexColors: true,
+        size: isMobile ? 0.04 : 0.05,
+        transparent: true,
+        opacity: isMobile ? 0.8 : 0.9,
+        blending: THREE.AdditiveBlending,
+        sizeAttenuation: true
+    });
+
+    if (particleSystem) {
+        scene.remove(particleSystem);
+        particleSystem.geometry.dispose();
+        particleSystem.material.dispose();
+    }
+    
+    particleSystem = new THREE.Points(geometry, material);
+    scene.add(particleSystem);
+    
+    return particleSystem;
+}
+
+// ================= SMOOTH MOVEMENT SYSTEM =================
+let smoothingFactor = 0.85;
+let targetTemplate = "galaxy";
+let templateTransition = 0;
+
+// Smoothness control
+smoothnessControl.addEventListener('input', (e) => {
+    smoothingFactor = parseFloat(e.target.value);
+    smoothValueElement.textContent = smoothingFactor.toFixed(2);
+});
+
+class SmoothController {
+    constructor() {
+        this.position = new THREE.Vector3();
+        this.target = new THREE.Vector3();
+        this.velocity = new THREE.Vector3();
+    }
+    
+    update(targetX, targetY, targetZ) {
+        this.target.set(targetX, targetY, targetZ);
+        
+        const diff = new THREE.Vector3().subVectors(this.target, this.position);
+        this.velocity.lerp(diff, 1 - smoothingFactor);
+        
+        // Adjust sensitivity based on screen size
+        const sensitivity = window.innerWidth < 768 ? 0.8 : 1;
+        this.position.add(this.velocity.multiplyScalar(sensitivity));
+        this.position.lerp(this.target, 1 - smoothingFactor);
+        
+        return this.position;
+    }
+}
+
+const positionController = new SmoothController();
+
+// Mobile controls
+mobileLeftBtn.addEventListener('click', () => {
+    const templatesList = Object.keys(templates);
+    let currentIndex = templatesList.indexOf(targetTemplate);
+    currentIndex = (currentIndex - 1 + templatesList.length) % templatesList.length;
+    switchTemplate(templatesList[currentIndex]);
+});
+
+mobileRightBtn.addEventListener('click', () => {
+    const templatesList = Object.keys(templates);
+    let currentIndex = templatesList.indexOf(targetTemplate);
+    currentIndex = (currentIndex + 1) % templatesList.length;
+    switchTemplate(templatesList[currentIndex]);
+});
+
+mobileResetBtn.addEventListener('click', () => {
+    positionController.target.set(0, 0, 0);
+    switchTemplate("galaxy");
+});
+
+function switchTemplate(name) {
+    if (targetTemplate === name) return;
+    targetTemplate = name;
+    templateTransition = 0;
+    
+    currentTemplateElement.textContent = templateInfo[name].name;
+    document.querySelector('.template-icon').textContent = templateInfo[name].icon;
+    
+    // Animate indicator
+    const indicator = document.getElementById('template-indicator');
+    indicator.style.transform = 'translateX(-50%) scale(1.1)';
+    setTimeout(() => {
+        indicator.style.transform = 'translateX(-50%) scale(1)';
+    }, 200);
+}
+
+// ================= RESPONSIVE MEDIAPIPE SETUP =================
+let handResults = null;
+const video = document.getElementById("webcam-video");
+
+const hands = new Hands({
+    locateFile: (file) =>
+        `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+});
+
+// Adjust hand tracking settings based on device
+hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: isMobile ? 0 : 1, // Simpler model for mobile
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+});
+
+hands.onResults(res => {
+    handResults = res;
+    
+    if (res.multiHandLandmarks?.length) {
+        handDotElement.className = 'hand-dot connected';
+        handStatusElement.innerHTML = '<div class="hand-dot connected"></div><span>Hand detected</span>';
+    } else {
+        handDotElement.className = 'hand-dot';
+        handStatusElement.innerHTML = '<div class="hand-dot"></div><span>Waiting for hand...</span>';
+    }
+    
+    if (loadingElement.style.opacity !== '0') {
+        loadingElement.style.opacity = '0';
+        setTimeout(() => {
+            loadingElement.style.display = 'none';
+        }, 500);
+    }
+});
+
+// Adaptive camera setup
+function startCamera() {
+    const constraints = {
+        video: {
+            facingMode: "user",
+            width: { ideal: isMobile ? 320 : 640 },
+            height: { ideal: isMobile ? 240 : 480 },
+            frameRate: { ideal: isMobile ? 24 : 30 }
+        }
+    };
+    
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+            video.srcObject = stream;
+            
+            const cam = new Camera(video, {
+                onFrame: async () => {
+                    await hands.send({ image: video });
+                },
+                width: isMobile ? 320 : 640,
+                height: isMobile ? 240 : 480
+            });
+            cam.start();
+        })
+        .catch(err => {
+            console.error("Camera error:", err);
+            handStatusElement.innerHTML = '<div class="hand-dot"></div><span>Camera not available</span>';
+            loadingElement.style.display = 'none';
+        });
+}
+
+// ================= HAND CONTROL WITH RESPONSIVE ADJUSTMENTS =================
+function updateFromHand() {
+    if (!handResults || !handResults.multiHandLandmarks?.length) {
+        const smoothedPos = positionController.update(0, 0, 0);
+        particleSystem.position.copy(smoothedPos);
+        return;
+    }
+    
+    const landmarks = handResults.multiHandLandmarks[0];
+    const wrist = landmarks[0];
+    const thumbTip = landmarks[4];
+    const indexTip = landmarks[8];
+    
+    // Adjust mapping based on screen size
+    const scaleX = window.innerWidth < 768 ? 10 : 15;
+    const scaleY = window.innerWidth < 768 ? 8 : 12;
+    
+    const handX = (wrist.x - 0.5) * scaleX;
+    const handY = -(wrist.y - 0.5) * scaleY;
+    
+    const smoothedPos = positionController.update(handX, handY, 0);
+    particleSystem.position.copy(smoothedPos);
+    
+    // Pinch for size
+    const pinchDistance = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+    const targetSize = THREE.MathUtils.clamp(
+        pinchDistance * (isMobile ? 2 : 2.5), 
+        isMobile ? 0.04 : 0.03, 
+        isMobile ? 0.2 : 0.25
+    );
+    particleSystem.material.size = targetSize;
+    
+    // Template selection
+    if (wrist.x < 0.25) {
+        switchTemplate("heart");
+    } else if (wrist.x > 0.75) {
+        switchTemplate("saturn");
+    } else if (wrist.y < 0.25) {
+        switchTemplate("wave");
+    } else if (wrist.y > 0.75) {
+        switchTemplate("spiral");
+    } else {
+        switchTemplate("galaxy");
+    }
+}
+
+// ================= PERFORMANCE OPTIMIZED ANIMATION =================
+let lastTime = 0;
+let frameCount = 0;
+let lastFpsUpdate = 0;
+
+function animate(currentTime) {
+    requestAnimationFrame(animate);
+    
+    // Calculate FPS
+    frameCount++;
+    if (currentTime - lastFpsUpdate >= 1000) {
+        fpsCounter.textContent = frameCount;
+        frameCount = 0;
+        lastFpsUpdate = currentTime;
+    }
+    
+    // Throttle updates on mobile
+    if (isMobile && currentTime - lastTime < 1000 / 30) {
+        return;
+    }
+    lastTime = currentTime;
+    
+    if (particleSystem) {
+        updateFromHand();
+        
+        // Update template transitions
+        if (templateTransition < 1) {
+            templateTransition = Math.min(templateTransition + 0.02, 1);
+            
+            const positions = particleSystem.geometry.attributes.position.array;
+            const colors = particleSystem.geometry.attributes.color.array;
+            const targetColor = templateColors[targetTemplate];
+            
+            // Only update subset of particles each frame for performance
+            const updateStep = isMobile ? 20 : 10;
+            for (let i = 0; i < COUNT; i += updateStep) {
+                const [targetX, targetY, targetZ] = templates[targetTemplate](i, COUNT);
+                
+                positions[i * 3] += (targetX - positions[i * 3]) * 0.05;
+                positions[i * 3 + 1] += (targetY - positions[i * 3 + 1]) * 0.05;
+                positions[i * 3 + 2] += (targetZ - positions[i * 3 + 2]) * 0.05;
+                
+                const currentColor = new THREE.Color(
+                    colors[i * 3],
+                    colors[i * 3 + 1],
+                    colors[i * 3 + 2]
+                );
+                
+                const newColor = currentColor.lerp(targetColor, 0.05);
+                colors[i * 3] = newColor.r;
+                colors[i * 3 + 1] = newColor.g;
+                colors[i * 3 + 2] = newColor.b;
+            }
+            
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+            particleSystem.geometry.attributes.color.needsUpdate = true;
+        }
+        
+        // Gentle rotation
+        particleSystem.rotation.y += isMobile ? 0.001 : 0.002;
+        particleSystem.rotation.x += isMobile ? 0.0005 : 0.001;
+    }
+    
+    renderer.render(scene, camera);
+}
+
+// ================= RESPONSIVE WINDOW HANDLING =================
+let resizeTimeout;
+function handleResize() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        if (!checkOrientation()) return;
+        
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        // Update camera
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        
+        // Update renderer
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
+        
+        // Adjust camera position
+        if (width < 768) {
+            camera.position.z = 10;
+        } else {
+            camera.position.z = 8;
+        }
+        
+        // Recreate particles with new optimal count
+        COUNT = getOptimalParticleCount();
+        particleCountElement.textContent = COUNT.toLocaleString();
+        createParticles();
+        
+    }, 250);
+}
+
+// ================= INITIALIZATION =================
+function init() {
+    if (!checkOrientation()) {
+        setTimeout(init, 1000);
+        return;
+    }
+    
+    initThreeJS();
+    createParticles();
+    startCamera();
+    animate(0);
+    
+    // Add event listeners
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    
+    // Keyboard controls for desktop
+    if (!isMobile) {
+        window.addEventListener('keydown', (e) => {
+            const templatesList = Object.keys(templates);
+            let currentIndex = templatesList.indexOf(targetTemplate);
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    currentIndex = (currentIndex - 1 + templatesList.length) % templatesList.length;
+                    switchTemplate(templatesList[currentIndex]);
+                    break;
+                case 'ArrowRight':
+                    currentIndex = (currentIndex + 1) % templatesList.length;
+                    switchTemplate(templatesList[currentIndex]);
+                    break;
+                case ' ':
+                    positionController.target.set(0, 0, 0);
+                    switchTemplate("galaxy");
+                    break;
+            }
+        });
+    }
+}
+
+// Start initialization
+init();
+</script>
+</body>
+</html>
